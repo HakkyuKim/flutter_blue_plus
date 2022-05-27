@@ -2,7 +2,11 @@
 // All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-part of flutter_blue_plus;
+import 'package:rxdart/rxdart.dart';
+
+import '../gen/flutterblueplus.pb.dart' as protos;
+import 'guid.dart';
+import 'flutter_blue_platform_interface.dart';
 
 class BluetoothDescriptor {
   static final Guid cccd = Guid("00002902-0000-1000-8000-00805f9b34fb");
@@ -16,6 +20,10 @@ class BluetoothDescriptor {
   Stream<List<int>> get value => _value.stream;
 
   List<int> get lastValue => _value.value;
+
+  void updateValue(List<int> value) {
+    _value.add(value);
+  }
 
   BluetoothDescriptor.fromProto(protos.BluetoothDescriptor p)
       : uuid = Guid(p.uuid),
@@ -32,13 +40,9 @@ class BluetoothDescriptor {
       ..characteristicUuid = characteristicUuid.toString()
       ..serviceUuid = serviceUuid.toString();
 
-    await FlutterBluePlus.instance._channel
-        .invokeMethod('readDescriptor', request.writeToBuffer());
+    await FlutterBluePlatform.instance.readDescriptor(request);
 
-    return FlutterBluePlus.instance._methodStream
-        .where((m) => m.method == "ReadDescriptorResponse")
-        .map((m) => m.arguments)
-        .map((buffer) => protos.ReadDescriptorResponse.fromBuffer(buffer))
+    return FlutterBluePlatform.instance.readDescriptorResponse
         .where((p) =>
             (p.request.remoteId == request.remoteId) &&
             (p.request.descriptorUuid == request.descriptorUuid) &&
@@ -61,13 +65,9 @@ class BluetoothDescriptor {
       ..serviceUuid = serviceUuid.toString()
       ..value = value;
 
-    await FlutterBluePlus.instance._channel
-        .invokeMethod('writeDescriptor', request.writeToBuffer());
+    await FlutterBluePlatform.instance.writeDescriptor(request);
 
-    return FlutterBluePlus.instance._methodStream
-        .where((m) => m.method == "WriteDescriptorResponse")
-        .map((m) => m.arguments)
-        .map((buffer) => protos.WriteDescriptorResponse.fromBuffer(buffer))
+    return FlutterBluePlatform.instance.writeDescriptorResponse
         .where((p) =>
             (p.request.remoteId == request.remoteId) &&
             (p.request.descriptorUuid == request.descriptorUuid) &&

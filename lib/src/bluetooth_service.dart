@@ -2,7 +2,11 @@
 // All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-part of flutter_blue_plus;
+import 'package:flutter_blue_plus/src/flutter_blue_platform_interface.dart';
+
+import '../gen/flutterblueplus.pb.dart' as protos;
+import 'bluetooth_characteristic.dart';
+import 'guid.dart';
 
 class BluetoothService {
   final Guid uuid;

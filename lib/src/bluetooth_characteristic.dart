@@ -2,7 +2,13 @@
 // All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-part of flutter_blue_plus;
+import 'package:rxdart/rxdart.dart';
+import 'package:meta/meta.dart';
+
+import 'guid.dart';
+import 'flutter_blue_platform_interface.dart';
+import 'bluetooth_descriptor.dart';
+import '../gen/flutterblueplus.pb.dart' as protos;
 
 class BluetoothCharacteristic {
   final Guid uuid;
@@ -42,10 +48,7 @@ class BluetoothCharacteristic {
         _value = BehaviorSubject.seeded(p.value);
 
   Stream<BluetoothCharacteristic> get _onCharacteristicChangedStream =>
-      FlutterBluePlus.instance._methodStream
-          .where((m) => m.method == "OnCharacteristicChanged")
-          .map((m) => m.arguments)
-          .map((buffer) => protos.OnCharacteristicChanged.fromBuffer(buffer))
+      FlutterBluePlatform.instance.onCharacteristicChanged
           .where((p) => p.remoteId == deviceId.toString())
           .map((p) => BluetoothCharacteristic.fromProto(p.characteristic))
           .where((c) => c.uuid == uuid)
@@ -62,7 +65,7 @@ class BluetoothCharacteristic {
     for (var d in descriptors) {
       for (var newD in newDescriptors) {
         if (d.uuid == newD.uuid) {
-          d._value.add(newD.lastValue);
+          d.updateValue(newD.lastValue);
         }
       }
     }
@@ -74,16 +77,12 @@ class BluetoothCharacteristic {
       ..remoteId = deviceId.toString()
       ..characteristicUuid = uuid.toString()
       ..serviceUuid = serviceUuid.toString();
-    FlutterBluePlus.instance._log(LogLevel.info,
+    FlutterBluePlatform.instance.log(LogLevel.info,
         'remoteId: ${deviceId.toString()} characteristicUuid: ${uuid.toString()} serviceUuid: ${serviceUuid.toString()}');
 
-    await FlutterBluePlus.instance._channel
-        .invokeMethod('readCharacteristic', request.writeToBuffer());
+    await FlutterBluePlatform.instance.readCharacteristic(request);
 
-    return FlutterBluePlus.instance._methodStream
-        .where((m) => m.method == "ReadCharacteristicResponse")
-        .map((m) => m.arguments)
-        .map((buffer) => protos.ReadCharacteristicResponse.fromBuffer(buffer))
+    return FlutterBluePlatform.instance.readCharacteristicResponse
         .where((p) =>
             (p.remoteId == request.remoteId) &&
             (p.characteristic.uuid == request.characteristicUuid) &&
@@ -114,17 +113,14 @@ class BluetoothCharacteristic {
           protos.WriteCharacteristicRequest_WriteType.valueOf(type.index)!
       ..value = value;
 
-    var result = await FlutterBluePlus.instance._channel
-        .invokeMethod('writeCharacteristic', request.writeToBuffer());
+    var result =
+        await FlutterBluePlatform.instance.writeCharacteristic(request);
 
     if (type == CharacteristicWriteType.withoutResponse) {
       return result;
     }
 
-    return FlutterBluePlus.instance._methodStream
-        .where((m) => m.method == "WriteCharacteristicResponse")
-        .map((m) => m.arguments)
-        .map((buffer) => protos.WriteCharacteristicResponse.fromBuffer(buffer))
+    return FlutterBluePlatform.instance.writeCharacteristicResponse
         .where((p) =>
             (p.request.remoteId == request.remoteId) &&
             (p.request.characteristicUuid == request.characteristicUuid) &&
@@ -145,13 +141,9 @@ class BluetoothCharacteristic {
       ..characteristicUuid = uuid.toString()
       ..enable = notify;
 
-    await FlutterBluePlus.instance._channel
-        .invokeMethod('setNotification', request.writeToBuffer());
+    await FlutterBluePlatform.instance.setNotification(request);
 
-    return FlutterBluePlus.instance._methodStream
-        .where((m) => m.method == "SetNotificationResponse")
-        .map((m) => m.arguments)
-        .map((buffer) => protos.SetNotificationResponse.fromBuffer(buffer))
+    return FlutterBluePlatform.instance.setNotificationResponse
         .where((p) =>
             (p.remoteId == request.remoteId) &&
             (p.characteristic.uuid == request.characteristicUuid) &&

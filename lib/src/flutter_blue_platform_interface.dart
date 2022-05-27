@@ -1,6 +1,8 @@
-import 'package:flutter_blue_plus/gen/flutterblueplus.pb.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:collection/collection.dart';
+
+import '../gen/flutterblueplus.pb.dart' as protos;
+import 'bluetooth_device.dart';
 
 abstract class FlutterBluePlatform extends PlatformInterface {
   FlutterBluePlatform() : super(token: _token);
@@ -63,7 +65,7 @@ abstract class FlutterBluePlatform extends PlatformInterface {
     throw UnimplementedError();
   }
 
-  Future startScan(ScanSettings setting) async {
+  Future startScan(protos.ScanSettings settings) async {
     throw UnimplementedError();
   }
 
@@ -71,34 +73,66 @@ abstract class FlutterBluePlatform extends PlatformInterface {
     throw UnimplementedError();
   }
 
+  Stream<protos.ScanResult> get scanResults{
+    throw UnimplementedError();
+  }
+
   /// Sets the log level of the FlutterBlue instance
   /// Messages equal or below the log level specified are stored/forwarded,
   /// messages above are dropped.
-  void setLogLevel(LogLevel level) async {
+  Future setLogLevel(int level) async {
     throw UnimplementedError();
   }
 
-  Future readDescriptor(ReadDescriptorRequest request) {
+  void log(LogLevel level, String message) {
     throw UnimplementedError();
   }
 
-  Future writeDescriptor(WriteDescriptorRequest request) {
+  Future readDescriptor(protos.ReadDescriptorRequest request) {
     throw UnimplementedError();
   }
 
-  Future writeCharacteristic(WriteCharacteristicRequest request) {
+  Stream<protos.ReadDescriptorResponse> get readDescriptorResponse {
     throw UnimplementedError();
   }
 
-  Future readCharacteristic(ReadCharacteristicRequest request) {
+  Future writeDescriptor(protos.WriteDescriptorRequest request) {
     throw UnimplementedError();
   }
 
-  Future setNotification(SetNotificationRequest request) {
+  Stream<protos.WriteDescriptorResponse> get writeDescriptorResponse {
     throw UnimplementedError();
   }
 
-  Future connect(ConnectRequest request) {
+  Future readCharacteristic(protos.ReadCharacteristicRequest request) {
+    throw UnimplementedError();
+  }
+
+  Stream<protos.ReadCharacteristicResponse> get readCharacteristicResponse {
+    throw UnimplementedError();
+  }
+
+  Future writeCharacteristic(protos.WriteCharacteristicRequest request) {
+    throw UnimplementedError();
+  }
+
+  Stream<protos.WriteCharacteristicResponse> get writeCharacteristicResponse {
+    throw UnimplementedError();
+  }
+
+  Stream<protos.OnCharacteristicChanged> get onCharacteristicChanged {
+    throw UnimplementedError();
+  }
+
+  Future setNotification(protos.SetNotificationRequest request) {
+    throw UnimplementedError();
+  }
+
+  Stream<protos.SetNotificationResponse> get setNotificationResponse {
+    throw UnimplementedError();
+  }
+
+  Future connect(protos.ConnectRequest request) {
     throw UnimplementedError();
   }
 
@@ -110,6 +144,10 @@ abstract class FlutterBluePlatform extends PlatformInterface {
     throw UnimplementedError();
   }
 
+  Stream<protos.DiscoverServicesResult> get discoverServicesResult {
+    throw UnimplementedError();
+  }
+
   Future services(String id) {
     throw UnimplementedError();
   }
@@ -118,15 +156,27 @@ abstract class FlutterBluePlatform extends PlatformInterface {
     throw UnimplementedError();
   }
 
+  Stream<protos.DeviceStateResponse> get deviceStateResponse {
+    throw UnimplementedError();
+  }
+
   Future mtu(String id) {
     throw UnimplementedError();
   }
 
-  Future requestMtu(MtuSizeRequest request) {
+  Future requestMtu(protos.MtuSizeRequest request) {
+    throw UnimplementedError();
+  }
+
+  Stream<protos.MtuSizeResponse> get mtuSizeResponse {
     throw UnimplementedError();
   }
 
   Future readRssi(String remoteId) {
+    throw UnimplementedError();
+  }
+
+  Stream<protos.ReadRssiResult> get readRssiResult {
     throw UnimplementedError();
   }
 }

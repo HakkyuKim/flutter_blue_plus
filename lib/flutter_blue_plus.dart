@@ -2,21 +2,12 @@
 // All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-library flutter_blue_plus;
+export 'src/bluetooth_characteristic.dart';
+export 'src/bluetooth_descriptor.dart';
+export 'src/bluetooth_device.dart';
+export 'src/bluetooth_service.dart';
+export 'src/flutter_blue_plus.dart';
+export 'src/guid.dart';
 
-import 'dart:async';
-
-import 'package:collection/collection.dart';
-import 'package:convert/convert.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
-import 'package:rxdart/rxdart.dart';
-
-import 'gen/flutterblueplus.pb.dart' as protos;
-
-part 'src/bluetooth_characteristic.dart';
-part 'src/bluetooth_descriptor.dart';
-part 'src/bluetooth_device.dart';
-part 'src/bluetooth_service.dart';
-part 'src/flutter_blue_plus.dart';
-part 'src/guid.dart';
+export 'src/flutter_blue_platform_interface.dart'
+    show BluetoothState, LogLevel, DeviceIdentifier;

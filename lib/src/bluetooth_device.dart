@@ -2,7 +2,13 @@
 // All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-part of flutter_blue_plus;
+import 'dart:async';
+
+import 'package:rxdart/rxdart.dart';
+
+import '../gen/flutterblueplus.pb.dart' as protos;
+import 'package:flutter_blue_plus/src/flutter_blue_platform_interface.dart';
+import 'bluetooth_service.dart';
 
 class BluetoothDevice {
   final DeviceIdentifier id;
@@ -46,8 +52,7 @@ class BluetoothDevice {
       });
     }
 
-    await FlutterBluePlus.instance._channel
-        .invokeMethod('connect', request.writeToBuffer());
+    await FlutterBluePlatform.instance.connect(request);
 
     await state.firstWhere((s) => s == BluetoothDeviceState.connected);
 
@@ -59,8 +64,7 @@ class BluetoothDevice {
   }
 
   /// Cancels connection to the Bluetooth Device
-  Future disconnect() => FlutterBluePlus.instance._channel
-      .invokeMethod('disconnect', id.toString());
+  Future disconnect() => FlutterBluePlatform.instance.disconnect(id.toString());
 
   final BehaviorSubject<List<BluetoothService>> _services =
       BehaviorSubject.seeded([]);
@@ -72,10 +76,7 @@ class BluetoothDevice {
       return Future.error(Exception(
           'Cannot discoverServices while device is not connected. State == $s'));
     }
-    var response = FlutterBluePlus.instance._methodStream
-        .where((m) => m.method == "DiscoverServicesResult")
-        .map((m) => m.arguments)
-        .map((buffer) => protos.DiscoverServicesResult.fromBuffer(buffer))
+    var response = FlutterBluePlatform.instance.discoverServicesResult
         .where((p) => p.remoteId == id.toString())
         .map((p) => p.services)
         .map((s) => s.map((p) => BluetoothService.fromProto(p)).toList())
@@ -86,8 +87,7 @@ class BluetoothDevice {
       return list;
     });
 
-    await FlutterBluePlus.instance._channel
-        .invokeMethod('discoverServices', id.toString());
+    await FlutterBluePlatform.instance.discoverServices(id.toString());
 
     _isDiscoveringServices.add(true);
 
@@ -97,8 +97,8 @@ class BluetoothDevice {
   /// Returns a list of Bluetooth GATT services offered by the remote device
   /// This function requires that discoverServices has been completed for this device
   Stream<List<BluetoothService>> get services async* {
-    yield await FlutterBluePlus.instance._channel
-        .invokeMethod('services', id.toString())
+    yield await FlutterBluePlatform.instance
+        .services(id.toString())
         .then((buffer) =>
             protos.DiscoverServicesResult.fromBuffer(buffer).services)
         .then((i) => i.map((s) => BluetoothService.fromProto(s)).toList());
@@ -107,30 +107,24 @@ class BluetoothDevice {
 
   /// The current connection state of the device
   Stream<BluetoothDeviceState> get state async* {
-    yield await FlutterBluePlus.instance._channel
-        .invokeMethod('deviceState', id.toString())
+    yield await FlutterBluePlatform.instance
+        .deviceState(id.toString())
         .then((buffer) => protos.DeviceStateResponse.fromBuffer(buffer))
         .then((p) => BluetoothDeviceState.values[p.state.value]);
 
-    yield* FlutterBluePlus.instance._methodStream
-        .where((m) => m.method == "DeviceState")
-        .map((m) => m.arguments)
-        .map((buffer) => protos.DeviceStateResponse.fromBuffer(buffer))
+    yield* FlutterBluePlatform.instance.deviceStateResponse
         .where((p) => p.remoteId == id.toString())
         .map((p) => BluetoothDeviceState.values[p.state.value]);
   }
 
   /// The MTU size in bytes
   Stream<int> get mtu async* {
-    yield await FlutterBluePlus.instance._channel
-        .invokeMethod('mtu', id.toString())
+    yield await FlutterBluePlatform.instance
+        .mtu(id.toString())
         .then((buffer) => protos.MtuSizeResponse.fromBuffer(buffer))
         .then((p) => p.mtu);
 
-    yield* FlutterBluePlus.instance._methodStream
-        .where((m) => m.method == "MtuSize")
-        .map((m) => m.arguments)
-        .map((buffer) => protos.MtuSizeResponse.fromBuffer(buffer))
+    yield* FlutterBluePlatform.instance.mtuSizeResponse
         .where((p) => p.remoteId == id.toString())
         .map((p) => p.mtu);
   }
@@ -144,16 +138,12 @@ class BluetoothDevice {
       ..remoteId = id.toString()
       ..mtu = desiredMtu;
 
-    var response = FlutterBluePlus.instance._methodStream
-        .where((m) => m.method == "MtuSize")
-        .map((m) => m.arguments)
-        .map((buffer) => protos.MtuSizeResponse.fromBuffer(buffer))
+    var response = FlutterBluePlatform.instance.mtuSizeResponse
         .where((p) => p.remoteId == id.toString())
         .map((p) => p.mtu)
         .first;
 
-    await FlutterBluePlus.instance._channel
-        .invokeMethod('requestMtu', request.writeToBuffer());
+    await FlutterBluePlatform.instance.requestMtu(request);
 
     return response;
   }
@@ -165,12 +155,9 @@ class BluetoothDevice {
   /// Read the RSSI for a connected remote device
   Future<int> readRssi() async {
     final remoteId = id.toString();
-    await FlutterBluePlus.instance._channel.invokeMethod('readRssi', remoteId);
+    await FlutterBluePlatform.instance.readRssi(remoteId);
 
-    return FlutterBluePlus.instance._methodStream
-        .where((m) => m.method == "ReadRssiResult")
-        .map((m) => m.arguments)
-        .map((buffer) => protos.ReadRssiResult.fromBuffer(buffer))
+    return FlutterBluePlatform.instance.readRssiResult
         .where((p) => (p.remoteId == remoteId))
         .first
         .then((c) {

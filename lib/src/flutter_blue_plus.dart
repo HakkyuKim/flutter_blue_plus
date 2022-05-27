@@ -2,24 +2,19 @@
 // All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-part of flutter_blue_plus;
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:rxdart/rxdart.dart';
+
+import '../gen/flutterblueplus.pb.dart' as protos;
+import 'flutter_blue_platform_interface.dart';
+import 'bluetooth_device.dart';
+import 'guid.dart';
 
 class FlutterBluePlus {
-  final MethodChannel _channel =
-      const MethodChannel('flutter_blue_plus/methods');
-  final EventChannel _stateChannel =
-      const EventChannel('flutter_blue_plus/state');
-  final StreamController<MethodCall> _methodStreamController =
-      StreamController.broadcast(); // ignore: close_sinks
-  Stream<MethodCall> get _methodStream => _methodStreamController
-      .stream; // Used internally to dispatch methods from platform.
-
   /// Singleton boilerplate
   FlutterBluePlus._() {
-    _channel.setMethodCallHandler((MethodCall call) async {
-      _methodStreamController.add(call);
-    });
-
     setLogLevel(logLevel);
   }
 
@@ -32,10 +27,11 @@ class FlutterBluePlus {
 
   /// Checks whether the device supports Bluetooth
   Future<bool> get isAvailable =>
-      _channel.invokeMethod('isAvailable').then<bool>((d) => d);
+      FlutterBluePlatform.instance.isAvailable.then<bool>((d) => d);
 
   /// Checks if Bluetooth functionality is turned on
-  Future<bool> get isOn => _channel.invokeMethod('isOn').then<bool>((d) => d);
+  Future<bool> get isOn =>
+      FlutterBluePlatform.instance.isOn.then<bool>((d) => d);
 
   /// Tries to turn on Bluetooth (Android only),
   ///
@@ -45,7 +41,7 @@ class FlutterBluePlus {
   /// Returns false if an error occured or bluetooth is already running
   ///
   Future<bool> turnOn() {
-    return _channel.invokeMethod('turnOn').then<bool>((d) => d);
+    return FlutterBluePlatform.instance.turnOn().then<bool>((d) => d);
   }
 
   /// Tries to turn off Bluetooth (Android only),
@@ -56,7 +52,7 @@ class FlutterBluePlus {
   /// Returns false if an error occured
   ///
   Future<bool> turnOff() {
-    return _channel.invokeMethod('turnOff').then<bool>((d) => d);
+    return FlutterBluePlatform.instance.turnOff().then<bool>((d) => d);
   }
 
   final BehaviorSubject<bool> _isScanning = BehaviorSubject.seeded(false);
@@ -78,33 +74,17 @@ class FlutterBluePlus {
 
   /// Gets the current state of the Bluetooth module
   Stream<BluetoothState> get state async* {
-    yield await _channel
-        .invokeMethod('state')
-        .then((buffer) => protos.BluetoothState.fromBuffer(buffer))
-        .then((s) => BluetoothState.values[s.state.value]);
-
-    yield* _stateChannel
-        .receiveBroadcastStream()
-        .map((buffer) => protos.BluetoothState.fromBuffer(buffer))
-        .map((s) => BluetoothState.values[s.state.value]);
+    yield* FlutterBluePlatform.instance.state;
   }
 
   /// Retrieve a list of connected devices
   Future<List<BluetoothDevice>> get connectedDevices {
-    return _channel
-        .invokeMethod('getConnectedDevices')
-        .then((buffer) => protos.ConnectedDevicesResponse.fromBuffer(buffer))
-        .then((p) => p.devices)
-        .then((p) => p.map((d) => BluetoothDevice.fromProto(d)).toList());
+    return FlutterBluePlatform.instance.connectedDevices;
   }
 
   /// Retrieve a list of bonded devices (Android only)
   Future<List<BluetoothDevice>> get bondedDevices {
-    return _channel
-        .invokeMethod('getBondedDevices')
-        .then((buffer) => protos.ConnectedDevicesResponse.fromBuffer(buffer))
-        .then((p) => p.devices)
-        .then((p) => p.map((d) => BluetoothDevice.fromProto(d)).toList());
+    return FlutterBluePlatform.instance.bondedDevices;
   }
 
   /// Starts a scan for Bluetooth Low Energy devices and returns a stream
@@ -142,7 +122,7 @@ class FlutterBluePlus {
     _scanResults.add(<ScanResult>[]);
 
     try {
-      await _channel.invokeMethod('startScan', settings.writeToBuffer());
+      await FlutterBluePlatform.instance.startScan(settings);
     } catch (e) {
       if (kDebugMode) {
         print('Error starting scan.');
@@ -152,12 +132,9 @@ class FlutterBluePlus {
       rethrow;
     }
 
-    yield* FlutterBluePlus.instance._methodStream
-        .where((m) => m.method == "ScanResult")
-        .map((m) => m.arguments)
+    yield* FlutterBluePlatform.instance.scanResults
         .takeUntil(Rx.merge(killStreams))
         .doOnDone(stopScan)
-        .map((buffer) => protos.ScanResult.fromBuffer(buffer))
         .map((p) {
       final result = ScanResult.fromProto(p);
       final list = _scanResults.value;
@@ -199,7 +176,7 @@ class FlutterBluePlus {
 
   /// Stops a scan for Bluetooth Low Energy devices
   Future stopScan() async {
-    await _channel.invokeMethod('stopScan');
+    await FlutterBluePlatform.instance.stopScan();
     _stopScanPill.add(null);
     _isScanning.add(false);
   }
@@ -216,40 +193,9 @@ class FlutterBluePlus {
   /// Messages equal or below the log level specified are stored/forwarded,
   /// messages above are dropped.
   void setLogLevel(LogLevel level) async {
-    await _channel.invokeMethod('setLogLevel', level.index);
+    await FlutterBluePlatform.instance.setLogLevel(level.index);
     _logLevel = level;
   }
-
-  void _log(LogLevel level, String message) {
-    if (level.index <= _logLevel.index) {
-      if (kDebugMode) {
-        print(message);
-      }
-    }
-  }
-}
-
-/// Log levels for FlutterBlue
-enum LogLevel {
-  emergency,
-  alert,
-  critical,
-  error,
-  warning,
-  notice,
-  info,
-  debug,
-}
-
-/// State of the bluetooth adapter.
-enum BluetoothState {
-  unknown,
-  unavailable,
-  unauthorized,
-  turningOn,
-  on,
-  turningOff,
-  off
 }
 
 class ScanMode {
@@ -259,21 +205,6 @@ class ScanMode {
   static const lowLatency = ScanMode(2);
   static const opportunistic = ScanMode(-1);
   final int value;
-}
-
-class DeviceIdentifier {
-  final String id;
-  const DeviceIdentifier(this.id);
-
-  @override
-  String toString() => id;
-
-  @override
-  int get hashCode => id.hashCode;
-
-  @override
-  bool operator ==(other) =>
-      other is DeviceIdentifier && compareAsciiLowerCase(id, other.id) == 0;
 }
 
 class ScanResult {
